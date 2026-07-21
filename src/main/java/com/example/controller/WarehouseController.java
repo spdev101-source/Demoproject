@@ -60,7 +60,7 @@ public class WarehouseController {
 	public Page<WarehouseResponseDTO> getAllWarehouses(
 			@RequestParam(defaultValue = "0") int page,
 			@RequestParam(defaultValue = "5") int size,
-			@RequestParam(defaultValue = "id") String sortBy,
+			@RequestParam(defaultValue = "warehouseId") String sortBy,
 			@RequestParam(defaultValue = "asc") String direction)
 	{
 		return warehouseService.getAllWarehouses(page, size, sortBy, direction);
@@ -70,7 +70,7 @@ public class WarehouseController {
 			@RequestParam String search,
 			@RequestParam(defaultValue = "0") int page,
 			@RequestParam(defaultValue = "5") int size,
-			@RequestParam(defaultValue = "id") String sortBy,
+			@RequestParam(defaultValue = "warehouseId") String sortBy,
 			@RequestParam(defaultValue = "asc") String direction)
 	{
 		return warehouseService.searchWarehouses(search, page, size, sortBy, direction);

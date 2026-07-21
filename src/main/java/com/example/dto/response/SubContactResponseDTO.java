@@ -5,7 +5,7 @@ package com.example.dto.response;
 
 public class SubContactResponseDTO {
 	private Long subContactId;
-    private String customerName;
+//    private CustomerResponseDTO customer;
 	private String contactPersonName;
     private String contactPhone;
     private String contactEmail;
@@ -16,12 +16,13 @@ public class SubContactResponseDTO {
 	public void setSubContactId(Long subContactId) {
 		this.subContactId = subContactId;
 	}
-	public String getCustomerName() {
-		return customerName;
-	}
-	public void setCustomerName(String customerName) {
-		this.customerName = customerName;
-	}
+	
+//	public CustomerResponseDTO getCustomer() {
+//		return customer;
+//	}
+//	public void setCustomer(CustomerResponseDTO customer) {
+//		this.customer = customer;
+//	}
 	public String getContactPersonName() {
 		return contactPersonName;
 	}

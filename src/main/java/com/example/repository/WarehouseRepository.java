@@ -18,6 +18,9 @@ public interface WarehouseRepository extends JpaRepository<Warehouse,Long>{
 	boolean existsByType(WarehouseType type);
 	boolean existsByWarehouseNameAndWarehouseIdNot(String warehouseName,Long warehouseId);
 	boolean existsByTypeAndWarehouseIdNot(WarehouseType type,Long warehouseId);
-	@Query("select w from Warehouse w where w.warehouseName LIKE :search " + "OR w.location LIKE :search " + "OR w.type like :search ")
+	@Query("SELECT w FROM Warehouse w WHERE w.warehouseName LIKE :search " +
+		       "OR w.location LIKE :search " +
+		       "OR CAST(w.type AS string) LIKE :search")
+//	@Query("select w from Warehouse w where w.warehouseName LIKE :search " + "OR w.location LIKE :search " + "OR w.type like :search ")
 	Page<Warehouse> searchWarehouses(@Param("search") String search,Pageable pageable);
 }

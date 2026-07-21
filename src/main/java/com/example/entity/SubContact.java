@@ -1,6 +1,7 @@
 package com.example.entity;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -9,19 +10,21 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name="subcontatcts")
+@Table(name = "subcontacts")
 public class SubContact {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long subContactId;
-	@ManyToOne
-	@JoinColumn(name="customer_id")
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "customer_id")
 	private Customer customer;
+
 	private String contactPersonName;
-    private String contactPhone;
-    private String contactEmail;
-	
+	private String contactPhone;
+	private String contactEmail;
+
 	public Long getSubContactId() {
 		return subContactId;
 	}
@@ -52,5 +55,4 @@ public class SubContact {
 	public void setContactEmail(String contactEmail) {
 		this.contactEmail = contactEmail;
 	}
-    
 }

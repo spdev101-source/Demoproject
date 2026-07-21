@@ -12,6 +12,7 @@ public interface CustomerService {
     Optional<CustomerResponseDTO> getCustomerById(Long customerId);
     CustomerResponseDTO updateCustomer(Long customerId, CustomerRequestDTO requestDTO);
     boolean deleteCustomer(Long customerId);
+//    CustomerResponseDTO addCustomerWithContacts(CustomerRequestDTO request);
     Page<CustomerResponseDTO> getAllCustomers(int page, int size, String sortBy, String direction);
     Page<CustomerResponseDTO> searchCustomer(String search, int page, int size, String sortBy, String direction);
 }

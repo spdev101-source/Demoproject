@@ -1,5 +1,7 @@
 package com.example.dto.response;
 
+import java.util.List;
+
 public class CustomerResponseDTO {
 	private Long customerId;
 	private String customerName;
@@ -8,8 +10,15 @@ public class CustomerResponseDTO {
 	private String city;
 	private String country;
 	private String state;
+    private List<SubContactResponseDTO> subContacts;
 	public Long getCustomerId() {
 		return customerId;
+	}
+	public List<SubContactResponseDTO> getSubContacts() {
+		return subContacts;
+	}
+	public void setSubContacts(List<SubContactResponseDTO> subContacts) {
+		this.subContacts = subContacts;
 	}
 	public void setCustomerId(Long customerId) {
 		this.customerId = customerId;

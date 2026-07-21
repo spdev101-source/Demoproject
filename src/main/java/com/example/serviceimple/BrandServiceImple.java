@@ -58,16 +58,14 @@ public class BrandServiceImple implements BrandService {
 	
 	@Override
 	public boolean deleteBrand(Long brandId) {
-
-		if (brandRepository.existsById(brandId)) {
-			return false;
-		}
-		if(!productRepository.findByBrandBrandId(brandId).isEmpty())
-		{
-			return false;
-		}
-		brandRepository.deleteById(brandId);
-		return true;
+	    if (!brandRepository.existsById(brandId)) {
+	        return false;
+	    }
+	    if (!productRepository.findByBrandBrandId(brandId).isEmpty()) {
+	        return false;
+	    }
+	    brandRepository.deleteById(brandId);
+	    return true;
 	}
 	
 

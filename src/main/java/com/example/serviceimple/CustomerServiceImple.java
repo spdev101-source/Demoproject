@@ -1,5 +1,7 @@
 package com.example.serviceimple;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import org.modelmapper.ModelMapper;
@@ -10,20 +12,28 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import com.example.dto.request.CustomerRequestDTO;
+import com.example.dto.request.SubContactRequestDTO;
 import com.example.dto.response.CustomerResponseDTO;
+import com.example.dto.response.SubContactResponseDTO;
 import com.example.entity.Customer;
+import com.example.entity.SubContact;
 import com.example.repository.CustomerRepository;
+import com.example.repository.SubContactRepository;
 import com.example.service.CustomerService;
+
+import jakarta.transaction.Transactional;
 
 @Service
 public class CustomerServiceImple implements CustomerService {
 
 	private final CustomerRepository customerRepository;
 	private final ModelMapper modelMapper;
+	private final SubContactRepository subContactRepository;
 
-	public CustomerServiceImple(CustomerRepository customerRepository, ModelMapper modelMapper) {
+	public CustomerServiceImple(CustomerRepository customerRepository, ModelMapper modelMapper,SubContactRepository subContactRepository) {
 		this.customerRepository = customerRepository;
 		this.modelMapper = modelMapper;
+		this.subContactRepository=subContactRepository;
 	}
 
 	@Override
@@ -43,10 +53,22 @@ public class CustomerServiceImple implements CustomerService {
 		return modelMapper.map(saved, CustomerResponseDTO.class);
 	}
 
+//	@Override
+//	public Optional<CustomerResponseDTO> getCustomerById(Long customerId) {
+//		return customerRepository.findById(customerId)
+//				.map(customer -> modelMapper.map(customer, CustomerResponseDTO.class));
+//	}
 	@Override
 	public Optional<CustomerResponseDTO> getCustomerById(Long customerId) {
-		return customerRepository.findById(customerId)
-				.map(customer -> modelMapper.map(customer, CustomerResponseDTO.class));
+	    return customerRepository.findById(customerId).map(customer -> {
+	        CustomerResponseDTO dto = modelMapper.map(customer, CustomerResponseDTO.class);
+	        List<SubContactResponseDTO> contacts = subContactRepository.findByCustomerCustomerId(customerId)
+	                .stream()
+	                .map(subContact -> modelMapper.map(subContact, SubContactResponseDTO.class))
+	                .toList();
+	        dto.setSubContacts(contacts);
+	        return dto;
+	    });
 	}
 
 	@Override
@@ -96,5 +118,30 @@ public class CustomerServiceImple implements CustomerService {
         Pageable pageable = PageRequest.of(page, size, sort);
         return customerRepository.searchByCustomerName(search, pageable).map(customer -> modelMapper.map(customer, CustomerResponseDTO.class));
     }
-
+//	@Override
+//	@Transactional
+//	public CustomerResponseDTO addCustomerWithContacts(CustomerRequestDTO request) {
+//	    Customer customer = modelMapper.map(request, Customer.class);
+//	    Customer savedCustomer = customerRepository.save(customer);
+//
+//	    List<SubContact> subContacts = new ArrayList<>();
+//	    if (request.getSubContacts() != null) {
+//	        for (SubContactRequestDTO scDto : request.getSubContacts()) {
+//	            SubContact sc = new SubContact();
+//	            sc.setCustomer(savedCustomer);
+//	            sc.setContactPersonName(scDto.getContactPersonName());
+//	            sc.setContactPhone(scDto.getContactPhone());
+//	            sc.setContactEmail(scDto.getContactEmail());
+//	            subContacts.add(sc);
+//	        }
+//	        subContactRepository.saveAll(subContacts);
+//	    }
+//
+//	    CustomerResponseDTO responseDto = modelMapper.map(savedCustomer, CustomerResponseDTO.class);
+//	    List<SubContactResponseDTO> contactDtos = subContacts.stream()
+//	            .map(sc -> modelMapper.map(sc, SubContactResponseDTO.class))
+//	            .toList();
+//	    responseDto.setSubContacts(contactDtos);
+//	    return responseDto;
+//	}
 }

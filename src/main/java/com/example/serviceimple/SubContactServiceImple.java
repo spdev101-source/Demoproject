@@ -7,6 +7,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 
 import com.example.dto.request.SubContactRequestDTO;
+import com.example.dto.response.CustomerResponseDTO;
 import com.example.dto.response.SubContactResponseDTO;
 import com.example.entity.Customer;
 import com.example.entity.SubContact;
@@ -42,7 +43,7 @@ public class SubContactServiceImple implements SubContactService {
         subContact.setContactEmail(requestDTO.getContactEmail());
         SubContact saved = subContactRepository.save(subContact);
         SubContactResponseDTO dto = modelMapper.map(saved, SubContactResponseDTO.class);
-        dto.setCustomerName(saved.getCustomer().getCustomerName());
+        //dto.setCustomer(modelMapper.map(saved.getCustomer(), CustomerResponseDTO.class));
         return dto;
     }
 
@@ -67,7 +68,7 @@ public class SubContactServiceImple implements SubContactService {
         subContact.setContactEmail(requestDTO.getContactEmail());
         SubContact updated = subContactRepository.save(subContact);
         SubContactResponseDTO dto = modelMapper.map(updated, SubContactResponseDTO.class);
-        dto.setCustomerName(updated.getCustomer().getCustomerName());
+       // dto.setCustomer(modelMapper.map(updated.getCustomer(), CustomerResponseDTO.class));
         return dto;
     }
 

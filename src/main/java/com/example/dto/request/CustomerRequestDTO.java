@@ -1,5 +1,7 @@
 package com.example.dto.request;
 
+import java.util.List;
+
 public class CustomerRequestDTO {
 	private String customerName;
 	private String customerPhone;
@@ -7,6 +9,14 @@ public class CustomerRequestDTO {
 	private String city;
 	private String country;
 	private String state;
+//	private List<SubContactRequestDTO> subContacts;
+
+//	public List<SubContactRequestDTO> getSubContacts() {
+//		return subContacts;
+//	}
+//	public void setSubContacts(List<SubContactRequestDTO> subContacts) {
+//		this.subContacts = subContacts;
+//	}
 	public String getCustomerName() {
 		return customerName;
 	}

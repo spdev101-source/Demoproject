@@ -66,7 +66,7 @@ public class ProductController {
 	public Page<ProductResponseDTO> getAllProducts(
 			@RequestParam(defaultValue = "0") int page,
 			@RequestParam(defaultValue = "5") int size,
-			@RequestParam(defaultValue = "id") String sortBy,
+			@RequestParam(defaultValue = "productId") String sortBy,
 			@RequestParam(defaultValue = "asc") String direction) {
 		return productService.getAllProducts(page, size, sortBy, direction);
 	}
@@ -75,7 +75,7 @@ public class ProductController {
 			@RequestParam String search,
 			@RequestParam(defaultValue = "0") int page,
 			@RequestParam(defaultValue = "5") int size,
-			@RequestParam(defaultValue = "id") String sortBy,
+			@RequestParam(defaultValue = "productId") String sortBy,
 			@RequestParam(defaultValue = "asc") String direction) {
 		return productService.searchProducts(search, page, size, sortBy, direction);
 	}

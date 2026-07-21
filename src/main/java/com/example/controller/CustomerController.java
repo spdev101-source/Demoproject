@@ -73,4 +73,23 @@ public class CustomerController {
 	            @RequestParam(defaultValue = "asc") String direction) {
 	        return customerService.searchCustomer(search, page, size, sortBy, direction);
 	    }
+//	 @PostMapping("/add-with-contacts")
+//	 public ResponseEntity<CustomerResponseDTO> addCustomerWithContacts(@RequestBody CustomerRequestDTO request) {
+//	     CustomerResponseDTO saved = customerService.addCustomerWithContacts(request);
+//	     return new ResponseEntity<>(saved, HttpStatus.CREATED);
+//	 }
+	 /*
+	  {
+  "customerName": "Acme1 Corp",
+  "customerPhone": "9876543010",
+  "customerEmail": "acme1@example.com",
+  "city": "Mumbai",
+  "country": "India",
+  "state": "Maharashtra",
+  "subContacts": [
+    { "contactPersonName": "Raj1 Kumar", "contactPhone": "9111111111", "contactEmail": "raj@acme.com" },
+    { "contactPersonName": "Priya2 Sharma", "contactPhone": "9222222222", "contactEmail": "priya@acme.com" }
+  ]
+}
+	  */
 }
