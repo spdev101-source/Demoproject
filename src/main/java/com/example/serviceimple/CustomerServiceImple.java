@@ -1,21 +1,22 @@
 package com.example.serviceimple;
 
-import java.util.List;
+import java.util.ArrayList;
 import java.util.Optional;
+
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+
 import com.example.dto.request.CustomerRequestDTO;
+import com.example.dto.request.SubContactRequestDTO;
 import com.example.dto.response.CustomerResponseDTO;
-import com.example.dto.response.SubContactResponseDTO;
 import com.example.entity.Customer;
+import com.example.entity.SubContact;
 import com.example.repository.CustomerRepository;
 import com.example.service.CustomerService;
-
-import jakarta.transaction.Transactional;
 
 @Service
 public class CustomerServiceImple implements CustomerService {
@@ -36,15 +37,34 @@ public class CustomerServiceImple implements CustomerService {
 		if (customerRepository.existsByCustomerPhone(requestDTO.getCustomerPhone())) {
 			throw new RuntimeException("Customer Already exists with Phone:" + requestDTO.getCustomerPhone());
 		}
-		Customer customer = modelMapper.map(requestDTO, Customer.class);
+
+		Customer customer = new Customer();
+		customer.setCustomerName(requestDTO.getCustomerName());
+		customer.setCustomerPhone(requestDTO.getCustomerPhone());
+		customer.setCustomerEmail(requestDTO.getCustomerEmail());
+		customer.setCity(requestDTO.getCity());
+		customer.setCountry(requestDTO.getCountry());
+		customer.setState(requestDTO.getState());
+
+		if (requestDTO.getSubContacts() != null) {
+			java.util.List<SubContact> subContacts = new ArrayList<>();
+			for (SubContactRequestDTO contactDTO : requestDTO.getSubContacts()) {
+				SubContact subContact = new SubContact();
+				subContact.setContactPersonName(contactDTO.getContactPersonName());
+				subContact.setContactPhone(contactDTO.getContactPhone());
+				subContact.setContactEmail(contactDTO.getContactEmail());
+				subContacts.add(subContact);
+			}
+			customer.setSubContacts(subContacts);
+		}
+
 		Customer saved = customerRepository.save(customer);
 		return modelMapper.map(saved, CustomerResponseDTO.class);
 	}
 
 	@Override
 	public Optional<CustomerResponseDTO> getCustomerById(Long customerId) {
-		return customerRepository.findById(customerId)
-				.map(customer -> modelMapper.map(customer, CustomerResponseDTO.class));
+		return customerRepository.findById(customerId).map(customer -> modelMapper.map(customer, CustomerResponseDTO.class));
 	}
 
 	@Override
@@ -69,13 +89,8 @@ public class CustomerServiceImple implements CustomerService {
 
 	@Override
 	public boolean deleteCustomer(Long customerId) {
-		Optional<Customer> customerOpt = customerRepository.findById(customerId);
-		if (customerOpt.isEmpty()) {
+		if (!customerRepository.existsById(customerId)) {
 			return false;
-		}
-		Customer customer = customerOpt.get();
-		if (!customer.getSubContacts().isEmpty()) {
-			throw new RuntimeException("Cannot delete customer, sub-contacts exist");
 		}
 		customerRepository.deleteById(customerId);
 		return true;
@@ -94,19 +109,23 @@ public class CustomerServiceImple implements CustomerService {
 		Pageable pageable = PageRequest.of(page, size, sort);
 		return customerRepository.searchByCustomerName(search, pageable).map(customer -> modelMapper.map(customer, CustomerResponseDTO.class));
 	}
+
 	@Override
-	public Optional<CustomerResponseDTO> getCustomerWithContacts(Long customerId) {
-		return customerRepository.findById(customerId).map(customer -> {
-			CustomerResponseDTO dto = modelMapper.map(customer, CustomerResponseDTO.class);
-			List<SubContactResponseDTO> contacts = customer.getSubContacts().stream()
-					.map(sc -> {
-						SubContactResponseDTO scDto = modelMapper.map(sc, SubContactResponseDTO.class);
-						scDto.setCustomerName(customer.getCustomerName());
-						return scDto;
-					})
-					.toList();
-			dto.setSubContacts(contacts);
-			return dto;
-		});
+	public CustomerResponseDTO addSubContact(Long customerId, SubContactRequestDTO requestDTO) {
+		Customer customer = customerRepository.findById(customerId)
+				.orElseThrow(() -> new RuntimeException("Customer Not found with id:" + customerId));
+
+		SubContact subContact = new SubContact();
+		subContact.setContactPersonName(requestDTO.getContactPersonName());
+		subContact.setContactPhone(requestDTO.getContactPhone());
+		subContact.setContactEmail(requestDTO.getContactEmail());
+
+		if (customer.getSubContacts() == null) {
+			customer.setSubContacts(new ArrayList<>());
+		}
+		customer.getSubContacts().add(subContact);
+
+		Customer updated = customerRepository.save(customer);
+		return modelMapper.map(updated, CustomerResponseDTO.class);
 	}
 }

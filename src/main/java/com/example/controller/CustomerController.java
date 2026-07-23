@@ -4,7 +4,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import com.example.dto.request.CustomerRequestDTO;
+import com.example.dto.request.SubContactRequestDTO;
 import com.example.dto.response.CustomerResponseDTO;
 import com.example.service.CustomerService;
 
@@ -63,10 +65,48 @@ public class CustomerController {
 			@RequestParam(defaultValue = "asc") String direction) {
 		return customerService.searchCustomer(search, page, size, sortBy, direction);
 	}
-	@GetMapping("/getFull/{customerId}")
-	public ResponseEntity<CustomerResponseDTO> getCustomerWithContacts(@PathVariable Long customerId) {
-		CustomerResponseDTO dto = customerService.getCustomerWithContacts(customerId)
-				.orElseThrow(() -> new RuntimeException("Customer Not found with id:" + customerId));
-		return new ResponseEntity<>(dto, HttpStatus.OK);
+
+	@PostMapping("/{customerId}/subcontacts")
+	public ResponseEntity<CustomerResponseDTO> addSubContact(@PathVariable Long customerId, @RequestBody SubContactRequestDTO requestDTO) {
+		CustomerResponseDTO updated = customerService.addSubContact(customerId, requestDTO);
+		return new ResponseEntity<>(updated, HttpStatus.CREATED);
 	}
+	/*
+	 @Override
+public CustomerResponseDTO updateCustomer(Long customerId, CustomerRequestDTO requestDTO) {
+	Customer customer = customerRepository.findById(customerId)
+			.orElseThrow(() -> new RuntimeException("Customer not found with id:" + customerId));
+	if (customerRepository.existsByCustomerEmailAndCustomerIdNot(requestDTO.getCustomerEmail(), customerId)) {
+		throw new RuntimeException("Customer Already exists with Email:" + requestDTO.getCustomerEmail());
+	}
+	if (customerRepository.existsByCustomerPhoneAndCustomerIdNot(requestDTO.getCustomerPhone(), customerId)) {
+		throw new RuntimeException("Customer Already exists with Phone:" + requestDTO.getCustomerPhone());
+	}
+
+	customer.setCustomerName(requestDTO.getCustomerName());
+	customer.setCustomerPhone(requestDTO.getCustomerPhone());
+	customer.setCustomerEmail(requestDTO.getCustomerEmail());
+	customer.setCity(requestDTO.getCity());
+	customer.setCountry(requestDTO.getCountry());
+	customer.setState(requestDTO.getState());
+
+	if (requestDTO.getSubContacts() != null) {
+		if (customer.getSubContacts() == null) {
+			customer.setSubContacts(new ArrayList<>());
+		} else {
+			customer.getSubContacts().clear();
+		}
+		for (SubContactRequestDTO contactDTO : requestDTO.getSubContacts()) {
+			SubContact subContact = new SubContact();
+			subContact.setContactPersonName(contactDTO.getContactPersonName());
+			subContact.setContactPhone(contactDTO.getContactPhone());
+			subContact.setContactEmail(contactDTO.getContactEmail());
+			customer.getSubContacts().add(subContact);
+		}
+	}
+
+	Customer updated = customerRepository.save(customer);
+	return modelMapper.map(updated, CustomerResponseDTO.class);
+}
+	 */
 }

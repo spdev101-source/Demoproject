@@ -1,9 +1,9 @@
 package com.example.controller;
 
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import com.example.dto.request.SubContactRequestDTO;
 import com.example.dto.response.SubContactResponseDTO;
 import com.example.service.SubContactService;
@@ -16,12 +16,6 @@ public class SubContactController {
 
 	public SubContactController(SubContactService subContactService) {
 		this.subContactService = subContactService;
-	}
-
-	@PostMapping("/save")
-	public ResponseEntity<SubContactResponseDTO> createSubContact(@RequestBody SubContactRequestDTO requestDTO) {
-		SubContactResponseDTO saved = subContactService.createSubContact(requestDTO);
-		return new ResponseEntity<>(saved, HttpStatus.CREATED);
 	}
 
 	@GetMapping("/get/{subContactId}")
@@ -43,10 +37,5 @@ public class SubContactController {
 			return new ResponseEntity<>("Sub-contact not found with id:" + subContactId, HttpStatus.NOT_FOUND);
 		}
 		return new ResponseEntity<>("Sub-contact deleted Successfully", HttpStatus.OK);
-	}
-
-	@GetMapping("/customer/{customerId}")
-	public List<SubContactResponseDTO> getSubContactsByCustomerId(@PathVariable Long customerId) {
-		return subContactService.getSubContactsByCustomerId(customerId);
 	}
 }

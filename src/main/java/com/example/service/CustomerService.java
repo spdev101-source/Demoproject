@@ -1,8 +1,11 @@
 package com.example.service;
 
 import java.util.Optional;
+
 import org.springframework.data.domain.Page;
+
 import com.example.dto.request.CustomerRequestDTO;
+import com.example.dto.request.SubContactRequestDTO;
 import com.example.dto.response.CustomerResponseDTO;
 
 public interface CustomerService {
@@ -12,5 +15,5 @@ public interface CustomerService {
 	boolean deleteCustomer(Long customerId);
 	Page<CustomerResponseDTO> getAllCustomers(int page, int size, String sortBy, String direction);
 	Page<CustomerResponseDTO> searchCustomer(String search, int page, int size, String sortBy, String direction);
-	Optional<CustomerResponseDTO> getCustomerWithContacts(Long customerId);
+	CustomerResponseDTO addSubContact(Long customerId, SubContactRequestDTO requestDTO);
 }
