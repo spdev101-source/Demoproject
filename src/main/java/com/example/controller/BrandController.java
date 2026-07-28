@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.configuration.JwtUtil;
 import com.example.dto.request.BrandRequestDTO;
 import com.example.dto.response.BrandResponseDTO;
 import com.example.service.BrandService;
@@ -22,9 +23,11 @@ import com.example.service.BrandService;
 public class BrandController {
 
 	private final BrandService brandService;
+	private final JwtUtil jwtUtil;
 
-	public BrandController(BrandService brandService) {
+	public BrandController(BrandService brandService,JwtUtil jwtUtil) {
 		this.brandService = brandService;
+		this.jwtUtil=jwtUtil;
 	}
 
 	@PostMapping("/save")
@@ -71,5 +74,13 @@ public class BrandController {
 			@RequestParam(defaultValue = "brandId") String sortBy,
 			@RequestParam(defaultValue = "asc") String direction) {
 		return brandService.searchBrand(search, page, size, sortBy, direction);
+	}
+	@GetMapping("/test-jwt")
+	public String testJwt() {
+		String token = jwtUtil.generateToken("mansi", "USER");
+		boolean valid = jwtUtil.isTokenValid(token);
+		String username = jwtUtil.extractUsername(token);
+		String role = jwtUtil.extractRole(token);
+		return "Token: " + token + " | Valid: " + valid + " | Username: " + username + " | Role: " + role;
 	}
 }
