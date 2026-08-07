@@ -4,26 +4,35 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.stereotype.Component;
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
 
-@Component
-public class JwtUtil {
+@Service
+public class JwtService {
 
-	private final SecretKey secretKey = Keys.hmacShaKeyFor(
-			"this-is-a-very-long-secret-key-for-jwt-signing-1234".getBytes()
-	);
+	@Value("${jwt.secret}")
+	private String secretKeyString;
 
-	private final long EXPIRATION_TIME = 1000 * 60 * 60; // 1 hour
+	@Value("${jwt.expiration}")
+	private long expirationTime;
+
+	private SecretKey secretKey;
+
+	@PostConstruct
+	public void init() {
+		this.secretKey = Keys.hmacShaKeyFor(secretKeyString.getBytes());
+	}
 
 	public String generateToken(String username, String role) {
 		return Jwts.builder()
 				.subject(username)
 				.claim("role", role)
 				.issuedAt(new Date())
-				.expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
+				.expiration(new Date(System.currentTimeMillis() + expirationTime))
 				.signWith(secretKey)
 				.compact();
 	}
@@ -36,10 +45,13 @@ public class JwtUtil {
 		return getClaims(token).get("role", String.class);
 	}
 
+	public boolean isTokenExpired(String token) {
+		return getClaims(token).getExpiration().before(new Date());
+	}
+
 	public boolean isTokenValid(String token) {
 		try {
-			getClaims(token);
-			return true;
+			return !isTokenExpired(token);
 		} catch (JwtException | IllegalArgumentException e) {
 			return false;
 		}
