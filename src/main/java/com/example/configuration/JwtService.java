@@ -20,6 +20,9 @@ public class JwtService {
 	@Value("${jwt.expiration}")
 	private long expirationTime;
 
+	@Value("${jwt.refresh-expiration}")
+	private long refreshExpirationTime;
+
 	private SecretKey secretKey;
 
 	@PostConstruct
@@ -63,5 +66,17 @@ public class JwtService {
 				.build()
 				.parseSignedClaims(token)
 				.getPayload();
+	}
+	public String generateRefreshToken(String username) {
+		return Jwts.builder()
+				.subject(username)
+				.issuedAt(new Date())
+				.expiration(new Date(System.currentTimeMillis() + refreshExpirationTime))
+				.signWith(secretKey)
+				.compact();
+	}
+
+	public long getRefreshExpirationTime() {
+		return refreshExpirationTime;
 	}
 }

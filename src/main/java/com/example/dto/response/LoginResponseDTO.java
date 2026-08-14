@@ -6,7 +6,8 @@ public class LoginResponseDTO {
 	private String role;
 	private String message;
 	private String token;
-	
+	private String refreshToken;
+
 	public String getToken() {
 		return token;
 	}
@@ -31,12 +32,21 @@ public class LoginResponseDTO {
 	public void setMessage(String message) {
 		this.message = message;
 	}
-	public LoginResponseDTO(String username, String role, String message,String token) {
+	
+	public String getRefreshToken() {
+		return refreshToken;
+	}
+	public void setRefreshToken(String refreshToken) {
+		this.refreshToken = refreshToken;
+	}
+	public LoginResponseDTO(String username, String role, String message,String token,String refreshToken) {
 		super();
 		this.username = username;
 		this.role = role;
 		this.message = message;
 		this.token=token;
+		this.refreshToken = refreshToken;
+
 	}
 	
 }

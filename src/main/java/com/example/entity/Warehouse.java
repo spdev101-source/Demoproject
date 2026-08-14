@@ -537,7 +537,6 @@ public class QuotationServiceImple implements QuotationService {
 				BigDecimal lineTotal = baseAmount.add(taxAmount);
 
 				QuotationItem item = new QuotationItem();
-				item.setQuotation(quotation);
 				item.setProduct(product);
 				item.setQuantity(itemDTO.getQuantity());
 				item.setUnitPrice(itemDTO.getUnitPrice());
@@ -770,6 +769,85 @@ POST /api/quotations/save
     { "productId": 1, "quantity": 2, "unitPrice": 500.00, "taxPercentage": 18 },
     { "productId": 2, "quantity": 1, "unitPrice": 1000.00, "taxPercentage": 18 }
   ]
+}
+@Override
+public QuotationResponseDTO createQuotation(QuotationRequestDTO requestDTO) {
+	Customer customer = customerRepository.findById(requestDTO.getCustomerId())
+			.orElseThrow(() -> new RuntimeException("Customer Not found with id:" + requestDTO.getCustomerId()));
+
+	Lead lead = null;
+	if (requestDTO.getLeadId() != null) {
+		lead = leadRepository.findById(requestDTO.getLeadId())
+				.orElseThrow(() -> new RuntimeException("Lead Not found with id:" + requestDTO.getLeadId()));
+	}
+
+	if (requestDTO.getQuotationDate() == null || requestDTO.getQuotationDate().isAfter(LocalDate.now())) {
+		throw new RuntimeException("Quotation date cannot be in the future");
+	}
+	if (requestDTO.getValidTillDate() != null && requestDTO.getValidTillDate().isBefore(requestDTO.getQuotationDate())) {
+		throw new RuntimeException("Valid till date cannot be before quotation date");
+	}
+
+	Quotation quotation = new Quotation();
+	quotation.setCustomer(customer);
+	quotation.setLead(lead);
+	quotation.setQuotationDate(requestDTO.getQuotationDate());
+	quotation.setValidTillDate(requestDTO.getValidTillDate());
+	quotation.setStatus(requestDTO.getStatus() == null ? QuotationStatus.DRAFT : requestDTO.getStatus());
+
+	List<QuotationItem> items = new ArrayList<>();
+	BigDecimal totalAmount = BigDecimal.ZERO;
+
+	if (requestDTO.getQuotationItems() != null) {
+		for (QuotationItemRequestDTO itemDTO : requestDTO.getQuotationItems()) {
+			Product product = productRepository.findById(itemDTO.getProductId())
+					.orElseThrow(() -> new RuntimeException("Product Not found with id:" + itemDTO.getProductId()));
+
+			if (itemDTO.getQuantity() == null || itemDTO.getQuantity() <= 0) {
+				throw new RuntimeException("Quantity must be greater than 0 for product:" + product.getProductName());
+			}
+			if (itemDTO.getUnitPrice() == null || itemDTO.getUnitPrice().compareTo(BigDecimal.ZERO) < 0) {
+				throw new RuntimeException("Unit price cannot be negative for product:" + product.getProductName());
+			}
+
+			BigDecimal tax = itemDTO.getTaxPercentage() == null ? BigDecimal.ZERO : itemDTO.getTaxPercentage();
+			BigDecimal baseAmount = itemDTO.getUnitPrice().multiply(BigDecimal.valueOf(itemDTO.getQuantity()));
+			BigDecimal taxAmount = baseAmount.multiply(tax).divide(BigDecimal.valueOf(100));
+			BigDecimal lineTotal = baseAmount.add(taxAmount);
+
+			QuotationItem item = new QuotationItem();
+			item.setProduct(product);
+			item.setQuantity(itemDTO.getQuantity());
+			item.setUnitPrice(itemDTO.getUnitPrice());
+			item.setTaxPercentage(tax);
+			item.setLineTotal(lineTotal);
+
+			items.add(item);
+			totalAmount = totalAmount.add(lineTotal);
+		}
+	}
+
+	quotation.setQuotationItems(items);
+	quotation.setTotalAmount(totalAmount);
+
+	Quotation saved = quotationRepository.save(quotation);
+
+	// ---- inline toResponseDTO logic using ModelMapper ----
+	QuotationResponseDTO responseDTO = modelMapper.map(saved, QuotationResponseDTO.class);
+	responseDTO.setCustomerName(saved.getCustomer().getCustomerName());
+	responseDTO.setLeadRef(saved.getLead() != null ? saved.getLead().getLeadRef() : null);
+
+	List<QuotationItemResponseDTO> itemDTOs = new ArrayList<>();
+	if (saved.getQuotationItems() != null) {
+		for (QuotationItem item : saved.getQuotationItems()) {
+			QuotationItemResponseDTO itemDTO = modelMapper.map(item, QuotationItemResponseDTO.class);
+			itemDTO.setProductName(item.getProduct().getProductName());
+			itemDTOs.add(itemDTO);
+		}
+	}
+	responseDTO.setQuotationItems(itemDTOs);
+
+	return responseDTO;
 }
 	 */
 }
