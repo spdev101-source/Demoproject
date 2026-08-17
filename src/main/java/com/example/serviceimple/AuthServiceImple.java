@@ -18,8 +18,10 @@ import com.example.dto.request.RegisterRequestDTO;
 import com.example.dto.response.LoginResponseDTO;
 import com.example.dto.response.RefreshTokenResponseDTO;
 import com.example.entity.RefreshToken;
+import com.example.entity.Role;
 import com.example.entity.Users;
 import com.example.repository.RefreshTokenRepository;
+import com.example.repository.RoleRepository;
 import com.example.repository.UsersRepository;
 import com.example.service.AuthService;
 
@@ -31,13 +33,15 @@ public class AuthServiceImple implements AuthService {
 	private final AuthenticationManager authenticationManager;
 	private final JwtService jwtService;
 	private final RefreshTokenRepository refreshTokenRepository;
+	private final RoleRepository roleRepository;
 
-	public AuthServiceImple(UsersRepository usersRepository, PasswordEncoder passwordEncoder,AuthenticationManager authenticationManager,JwtService jwtService,RefreshTokenRepository refreshTokenRepository) {
+	public AuthServiceImple(UsersRepository usersRepository, PasswordEncoder passwordEncoder,AuthenticationManager authenticationManager,JwtService jwtService,RefreshTokenRepository refreshTokenRepository,RoleRepository roleRepository) {
 		this.usersRepository = usersRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.authenticationManager=authenticationManager;
 		this.jwtService=jwtService;
 		this.refreshTokenRepository=refreshTokenRepository;
+		this.roleRepository=roleRepository;
 	}
 
 	@Override
@@ -45,10 +49,14 @@ public class AuthServiceImple implements AuthService {
 		if (usersRepository.existsByUsername(requestDTO.getUsername())) {
 			return false;
 		}
+		Role userRole = roleRepository.findByName("USER")
+                .orElseThrow(() ->
+                    new RuntimeException("USER role not found"));
 		Users user = new Users();
 		user.setUsername(requestDTO.getUsername());
 		user.setPassword(passwordEncoder.encode(requestDTO.getPassword()));
-		user.setRole("USER");
+		//user.setRole("USER");
+		user.setRole(userRole);
 		usersRepository.save(user);
 		return true;
 	}
@@ -63,8 +71,13 @@ public class AuthServiceImple implements AuthService {
 	    UserDetails userDetails = (UserDetails) authentication.getPrincipal();
 //		String username = authentication.getName();
 
-		String role=authentication.getAuthorities().toString().replace("ROLE_", "");
-		String token =jwtService.generateToken(userDetails.getUsername(), role);
+	    String role = authentication.getAuthorities().stream()
+	            .map(GrantedAuthority::getAuthority)
+	            .filter(a -> a.startsWith("ROLE_"))
+	            .findFirst()
+	            .map(a -> a.replace("ROLE_", ""))
+	            .orElseThrow(() -> new RuntimeException("No role found for user"));
+	    String token =jwtService.generateToken(userDetails.getUsername(), role);
 		String refreshTokenStr = jwtService.generateRefreshToken(userDetails.getUsername());
 
 		// remove any old refresh token for this user first, so each login invalidates the previous session
@@ -95,7 +108,7 @@ public class AuthServiceImple implements AuthService {
 		Users user = usersRepository.findByUsername(storedToken.getUsername())
 				.orElseThrow(() -> new RuntimeException("User not found"));
 
-		String newAccessToken = jwtService.generateToken(user.getUsername(), user.getRole());
+		String newAccessToken = jwtService.generateToken(user.getUsername(), user.getRole().getName());
 
 		return new RefreshTokenResponseDTO(newAccessToken, submittedToken);
 	}

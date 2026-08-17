@@ -1,9 +1,26 @@
 package com.example.entity;
 
+import java.time.LocalDate;
+import java.util.Optional;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import com.example.dto.request.RegisterRequestDTO;
+import com.example.dto.response.OpeningStockResponseDTO;
+import com.example.dto.response.StockReportResponseDTO;
+
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity
@@ -15,7 +32,9 @@ public class Users {
 	private Long id;
 	private String username;
 	private String password;
-	private String role;
+	@ManyToOne(fetch = FetchType.EAGER)
+	@JoinColumn(name = "role_id", nullable = false)
+	private Role role;
 	public Long getId() {
 		return id;
 	}
@@ -34,348 +53,283 @@ public class Users {
 	public void setPassword(String password) {
 		this.password = password;
 	}
-	public String getRole() {
+	public Role getRole() {
 		return role;
 	}
-	public void setRole(String role) {
+	public void setRole(Role role) {
 		this.role = role;
 	}
 	/*
-	 package com.example.entity;
-
-import jakarta.persistence.*;
-import java.time.Instant;
-
-@Entity
-@Table(name = "refresh_tokens")
-public class RefreshToken {
-
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
-
-	@Column(nullable = false, unique = true, length = 512)
-	private String token;
-
-	@Column(nullable = false)
-	private String username;
-
-	@Column(nullable = false)
-	private Instant expiryDate;
-
-	public Long getId() { return id; }
-	public void setId(Long id) { this.id = id; }
-	public String getToken() { return token; }
-	public void setToken(String token) { this.token = token; }
-	public String getUsername() { return username; }
-	public void setUsername(String username) { this.username = username; }
-	public Instant getExpiryDate() { return expiryDate; }
-	public void setExpiryDate(Instant expiryDate) { this.expiryDate = expiryDate; }
-}
-jwt.secret=this-is-a-very-long-secret-key-for-jwt-signing-1234
-jwt.expiration=900000
-jwt.refresh-expiration=604800000
-package com.example.configuration;
-
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
-import jakarta.annotation.PostConstruct;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-
-import javax.crypto.SecretKey;
-import java.util.Date;
-
-@Service
-public class JwtService {
-
-	@Value("${jwt.secret}")
-	private String secretKeyString;
-
-	@Value("${jwt.expiration}")
-	private long expirationTime;
-
-	@Value("${jwt.refresh-expiration}")
-	private long refreshExpirationTime;
-
-	private SecretKey secretKey;
-
-	@PostConstruct
-	public void init() {
-		this.secretKey = Keys.hmacShaKeyFor(secretKeyString.getBytes());
-	}
-
-	public String generateToken(String username, String role) {
-		return Jwts.builder()
-				.subject(username)
-				.claim("role", role)
-				.issuedAt(new Date())
-				.expiration(new Date(System.currentTimeMillis() + expirationTime))
-				.signWith(secretKey)
-				.compact();
-	}
-
-	public String generateRefreshToken(String username) {
-		return Jwts.builder()
-				.subject(username)
-				.issuedAt(new Date())
-				.expiration(new Date(System.currentTimeMillis() + refreshExpirationTime))
-				.signWith(secretKey)
-				.compact();
-	}
-
-	public long getRefreshExpirationTime() {
-		return refreshExpirationTime;
-	}
-
-	public String extractUsername(String token) {
-		return getClaims(token).getSubject();
-	}
-
-	public String extractRole(String token) {
-		return getClaims(token).get("role", String.class);
-	}
-
-	public boolean isTokenExpired(String token) {
-		return getClaims(token).getExpiration().before(new Date());
-	}
-
-	public boolean isTokenValid(String token) {
-		try {
-			return !isTokenExpired(token);
-		} catch (JwtException | IllegalArgumentException e) {
-			return false;
-		}
-	}
-
-	private Claims getClaims(String token) {
-		return Jwts.parser()
-				.verifyWith(secretKey)
-				.build()
-				.parseSignedClaims(token)
-				.getPayload();
-	}
-}
-package com.example.dto.response;
-
-public class LoginResponseDTO {
-	private Long id;
-	private String token;
-	private String refreshToken;
-	private String username;
-	private String role;
-	private String message;
-
-	public LoginResponseDTO(Long id, String token, String refreshToken, String username, String role, String message) {
-		this.id = id;
-		this.token = token;
-		this.refreshToken = refreshToken;
-		this.username = username;
-		this.role = role;
-		this.message = message;
-	}
-
-	public Long getId() { return id; }
-	public void setId(Long id) { this.id = id; }
-	public String getToken() { return token; }
-	public void setToken(String token) { this.token = token; }
-	public String getRefreshToken() { return refreshToken; }
-	public void setRefreshToken(String refreshToken) { this.refreshToken = refreshToken; }
-	public String getUsername() { return username; }
-	public void setUsername(String username) { this.username = username; }
-	public String getRole() { return role; }
-	public void setRole(String role) { this.role = role; }
-	public String getMessage() { return message; }
-	public void setMessage(String message) { this.message = message; }
-}
-package com.example.dto.request;
-
-public class RefreshTokenRequestDTO {
-	private String refreshToken;
-
-	public String getRefreshToken() { return refreshToken; }
-	public void setRefreshToken(String refreshToken) { this.refreshToken = refreshToken; }
-}
-package com.example.dto.response;
-
-public class RefreshTokenResponseDTO {
-	private String token;
-	private String refreshToken;
-
-	public RefreshTokenResponseDTO(String token, String refreshToken) {
-		this.token = token;
-		this.refreshToken = refreshToken;
-	}
-
-	public String getToken() { return token; }
-	public void setToken(String token) { this.token = token; }
-	public String getRefreshToken() { return refreshToken; }
-	public void setRefreshToken(String refreshToken) { this.refreshToken = refreshToken; }
-}
-package com.example.service;
-
-import com.example.dto.request.LoginRequestDTO;
-import com.example.dto.request.RefreshTokenRequestDTO;
-import com.example.dto.request.RegisterRequestDTO;
-import com.example.dto.response.LoginResponseDTO;
-import com.example.dto.response.RefreshTokenResponseDTO;
-
-public interface AuthService {
-	boolean register(RegisterRequestDTO requestDTO);
-	LoginResponseDTO login(LoginRequestDTO requestDTO);
-	RefreshTokenResponseDTO refreshToken(RefreshTokenRequestDTO requestDTO);
-}
-package com.example.serviceimple;
-
-import com.example.configuration.JwtService;
-import com.example.dto.request.LoginRequestDTO;
-import com.example.dto.request.RefreshTokenRequestDTO;
-import com.example.dto.request.RegisterRequestDTO;
-import com.example.dto.response.LoginResponseDTO;
-import com.example.dto.response.RefreshTokenResponseDTO;
-import com.example.entity.RefreshToken;
-import com.example.entity.Users;
-import com.example.repository.RefreshTokenRepository;
-import com.example.repository.UsersRepository;
-import com.example.service.AuthService;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-
-import java.time.Instant;
-
-@Service
-public class AuthServiceImple implements AuthService {
-
-	private final UsersRepository usersRepository;
-	private final PasswordEncoder passwordEncoder;
-	private final JwtService jwtService;
-	private final AuthenticationManager authenticationManager;
-	private final RefreshTokenRepository refreshTokenRepository;
-
-	public AuthServiceImple(UsersRepository usersRepository, PasswordEncoder passwordEncoder,
-			JwtService jwtService, AuthenticationManager authenticationManager,
-			RefreshTokenRepository refreshTokenRepository) {
-		this.usersRepository = usersRepository;
-		this.passwordEncoder = passwordEncoder;
-		this.jwtService = jwtService;
-		this.authenticationManager = authenticationManager;
-		this.refreshTokenRepository = refreshTokenRepository;
-	}
-
-	@Override
+	 @Override
 	public boolean register(RegisterRequestDTO requestDTO) {
 		if (usersRepository.existsByUsername(requestDTO.getUsername())) {
 			return false;
 		}
+		Role userRole = roleRepository.findByName("USER")
+                .orElseThrow(() ->
+                    new RuntimeException("USER role not found"));
 		Users user = new Users();
 		user.setUsername(requestDTO.getUsername());
 		user.setPassword(passwordEncoder.encode(requestDTO.getPassword()));
-		user.setRole("USER");
+		//user.setRole("USER");
+		user.setRole(userRole);
 		usersRepository.save(user);
 		return true;
 	}
+	@Entity
+@Table(name="roles")
+public class Role {
 
-	@Override
-	public LoginResponseDTO login(LoginRequestDTO requestDTO) {
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
+	private String name;
+	public interface RoleRepository extends JpaRepository<Role,Long>{
+	Optional<Role> findByName(String name);
+	
+	/---------------
+	 boolean changeRole(Long userId, Long roleId);
+	 @Override
+public boolean changeRole(Long userId, Long roleId) {
 
-		Authentication authentication = authenticationManager.authenticate(
-				new UsernamePasswordAuthenticationToken(requestDTO.getUsername(), requestDTO.getPassword()));
+    Users user = usersRepository.findById(userId)
+            .orElseThrow(() ->
+                    new RuntimeException("User not found"));
 
-		String username = authentication.getName();
+    Role role = roleRepository.findById(roleId)
+            .orElseThrow(() ->
+                    new RuntimeException("Role not found"));
 
-		String role = authentication.getAuthorities().stream()
-				.findFirst()
-				.map(GrantedAuthority::getAuthority)
-				.orElseThrow(() -> new RuntimeException("No role found for user"))
-				.replace("ROLE_", "");
+    user.setRole(role);
 
-		Users user = usersRepository.findByUsername(username)
-				.orElseThrow(() -> new RuntimeException("Invalid username or password"));
+    usersRepository.save(user);
 
-		String accessToken = jwtService.generateToken(username, role);
-		String refreshTokenStr = jwtService.generateRefreshToken(username);
-
-		// remove any old refresh token for this user first, so each login invalidates the previous session
-		refreshTokenRepository.deleteByUsername(username);
-
-		RefreshToken refreshToken = new RefreshToken();
-		refreshToken.setToken(refreshTokenStr);
-		refreshToken.setUsername(username);
-		refreshToken.setExpiryDate(Instant.now().plusMillis(jwtService.getRefreshExpirationTime()));
-		refreshTokenRepository.save(refreshToken);
-
-		return new LoginResponseDTO(user.getId(), accessToken, refreshTokenStr, username, role, "Login successful");
-	}
-
-	@Override
-	public RefreshTokenResponseDTO refreshToken(RefreshTokenRequestDTO requestDTO) {
-		String submittedToken = requestDTO.getRefreshToken();
-
-		RefreshToken storedToken = refreshTokenRepository.findByToken(submittedToken)
-				.orElseThrow(() -> new RuntimeException("Invalid refresh token"));
-
-		if (storedToken.getExpiryDate().isBefore(Instant.now())) {
-			refreshTokenRepository.delete(storedToken);
-			throw new RuntimeException("Refresh token expired, please login again");
-		}
-
-		Users user = usersRepository.findByUsername(storedToken.getUsername())
-				.orElseThrow(() -> new RuntimeException("User not found"));
-
-		String newAccessToken = jwtService.generateToken(user.getUsername(), user.getRole());
-
-		return new RefreshTokenResponseDTO(newAccessToken, submittedToken);
-	}
+    return true;
 }
-package com.example.controller;
+@PutMapping("/admin/users/{userId}/role")
+public ResponseEntity<String> changeRole(
+        @PathVariable Long userId,
+        @RequestBody ChangeRoleRequestDTO requestDTO) {
 
-import com.example.dto.request.LoginRequestDTO;
-import com.example.dto.request.RefreshTokenRequestDTO;
-import com.example.dto.request.RegisterRequestDTO;
-import com.example.dto.response.LoginResponseDTO;
-import com.example.dto.response.RefreshTokenResponseDTO;
-import com.example.service.AuthService;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+    boolean updated = authService.changeRole(
+            userId,
+            requestDTO.getRoleId()
+    );
 
-@RestController
-@RequestMapping("/api/auth")
-public class AuthController {
+    if (updated) {
+        return ResponseEntity.ok("Role updated successfully");
+    }
 
-	private final AuthService authService;
+    return ResponseEntity.badRequest()
+            .body("Role update failed");
+}
+package com.example.dto;
 
-	public AuthController(AuthService authService) {
-		this.authService = authService;
+public class ChangeRoleRequestDTO {
+
+    private Long roleId;
+
+    public Long getRoleId() {
+        return roleId;
+    }
+
+    public void setRoleId(Long roleId) {
+        this.roleId = roleId;
+    }
+}
+PUT /api/admin/users/{userId}/role
+ OpeningStockResponseDTO getClosingStock(Long productId, Long warehouseId, LocalDate toDate);
+    StockReportResponseDTO getStockReport(Long productId, Long warehouseId,
+            LocalDate fromDate, LocalDate toDate);
+             @Override
+	    public OpeningStockResponseDTO getClosingStock(Long productId, Long warehouseId, LocalDate toDate) {
+
+	        Integer result = openingStockRepository.getClosingStock(productId, warehouseId, toDate);
+
+	        int closingStock;
+	        if (result != null) {
+	            closingStock = result;
+	        } else {
+	            closingStock = 0;
+	        }
+
+	        Product product = productRepository.findById(productId)
+	                .orElseThrow(() -> new RuntimeException("Product not found"));
+	        Warehouse warehouse = warehouseRepository.findById(warehouseId)
+	                .orElseThrow(() -> new RuntimeException("Warehouse not found"));
+
+	        OpeningStockResponseDTO response = new OpeningStockResponseDTO();
+	        response.setProductName(product.getProductName());
+	        response.setWarehouseName(warehouse.getWarehouseName());
+	        response.setQuantity(closingStock);
+	        response.setOpeningDate(toDate);
+
+	        return response;
+	    }
+
+	    
+
+	        @Override
+	        public StockReportResponseDTO getStockReport(Long productId, Long warehouseId,
+	                                                       LocalDate fromDate, LocalDate toDate) {
+
+	            Integer openingResult = openingStockRepository.getOpeningQuantity(productId, warehouseId, fromDate);
+	            int openingQuantity;
+	            if (openingResult != null) {
+	                openingQuantity = openingResult;
+	            } else {
+	                openingQuantity = 0;
+	            }
+
+	            Integer periodResult = openingStockRepository.getPeriodQuantity(productId, warehouseId, fromDate, toDate);
+	            int periodQuantity;
+	            if (periodResult != null) {
+	                periodQuantity = periodResult;
+	            } else {
+	                periodQuantity = 0;
+	            }
+
+	            int closingQuantity = openingQuantity + periodQuantity;
+
+	            Product product = productRepository.findById(productId)
+	                    .orElseThrow(() -> new RuntimeException("Product not found"));
+	            Warehouse warehouse = warehouseRepository.findById(warehouseId)
+	                    .orElseThrow(() -> new RuntimeException("Warehouse not found"));
+
+	            StockReportResponseDTO response = new StockReportResponseDTO();
+	            response.setProductId(productId);
+	            response.setProductName(product.getProductName());
+	            response.setWarehouseId(warehouseId);
+	            response.setWarehouseName(warehouse.getWarehouseName());
+	            response.setFromDate(fromDate);
+	            response.setToDate(toDate);
+	            response.setOpeningQuantity(openingQuantity);
+	            response.setPeriodQuantity(periodQuantity);
+	            response.setClosingQuantity(closingQuantity);
+
+	            return response;
+	        }
+	    }
+	
+@Query("SELECT SUM(o.quantity) " +
+	           "FROM OpeningStock o " +
+	           "WHERE o.product.productId = :productId " +
+	           "AND o.warehouse.warehouseId = :warehouseId " +
+	           "AND o.openingDate <= :toDate")
+	    Integer getClosingStock(@Param("productId") Long productId,
+	                             @Param("warehouseId") Long warehouseId,
+	                             @Param("toDate") LocalDate toDate);
+	@Query("SELECT SUM(o.quantity) " +
+	           "FROM OpeningStock o " +
+	           "WHERE o.product.productId = :productId " +
+	           "AND o.warehouse.warehouseId = :warehouseId " +
+	           "AND o.openingDate < :fromDate")
+	    Integer getOpeningQuantity(@Param("productId") Long productId,
+	                                @Param("warehouseId") Long warehouseId,
+	                                @Param("fromDate") LocalDate fromDate);
+
+	    // Period quantity: everything DURING the period (inclusive both ends)
+	    @Query("SELECT SUM(o.quantity) " +
+	           "FROM OpeningStock o " +
+	           "WHERE o.product.productId = :productId " +
+	           "AND o.warehouse.warehouseId = :warehouseId " +
+	           "AND o.openingDate BETWEEN :fromDate AND :toDate")
+	    Integer getPeriodQuantity(@Param("productId") Long productId,
+	                               @Param("warehouseId") Long warehouseId,
+	                               @Param("fromDate") LocalDate fromDate,
+	                               @Param("toDate") LocalDate toDate);
+}
+@GetMapping("/closingstock")
+    public ResponseEntity<OpeningStockResponseDTO> getClosingStock(
+            @RequestParam Long productId,
+            @RequestParam Long warehouseId,
+            @RequestParam LocalDate toDate) {
+
+        OpeningStockResponseDTO response = openingStockService.getClosingStock(productId, warehouseId, toDate);
+        return ResponseEntity.ok(response);
+    }
+	@GetMapping("/stock-report")
+    public ResponseEntity<StockReportResponseDTO> getStockReport(
+            @RequestParam Long productId,
+            @RequestParam Long warehouseId,
+            @RequestParam LocalDate fromDate,
+            @RequestParam LocalDate toDate) {
+
+        StockReportResponseDTO response = openingStockService.getStockReport(productId, warehouseId, fromDate, toDate);
+        return ResponseEntity.ok(response);
+    }
+    package com.example.dto.response;
+
+
+
+import java.time.LocalDate;
+
+public class StockReportResponseDTO {
+
+	private Long productId;
+	private String productName;
+	private Long warehouseId;
+	private String warehouseName;
+	private LocalDate fromDate;
+	private LocalDate toDate;
+	private Integer openingQuantity;
+	private Integer periodQuantity;
+	private Integer closingQuantity;
+
+	public Long getProductId() {
+		return productId;
 	}
-
-	@PostMapping("/register")
-	public ResponseEntity<String> register(@RequestBody RegisterRequestDTO requestDTO) {
-		boolean registered = authService.register(requestDTO);
-		if (!registered) {
-			return new ResponseEntity<>("Username already taken:" + requestDTO.getUsername(), HttpStatus.BAD_REQUEST);
-		}
-		return new ResponseEntity<>("User registered Successfully", HttpStatus.CREATED);
+	public void setProductId(Long productId) {
+		this.productId = productId;
 	}
-
-	@PostMapping("/login")
-	public ResponseEntity<LoginResponseDTO> login(@RequestBody LoginRequestDTO requestDTO) {
-		LoginResponseDTO response = authService.login(requestDTO);
-		return new ResponseEntity<>(response, HttpStatus.OK);
+	public String getProductName() {
+		return productName;
 	}
-
-	@PostMapping("/refresh")
-	public ResponseEntity<RefreshTokenResponseDTO> refreshToken(@RequestBody RefreshTokenRequestDTO requestDTO) {
-		RefreshTokenResponseDTO response = authService.refreshToken(requestDTO);
-		return new ResponseEntity<>(response, HttpStatus.OK);
+	public void setProductName(String productName) {
+		this.productName = productName;
+	}
+	public Long getWarehouseId() {
+		return warehouseId;
+	}
+	public void setWarehouseId(Long warehouseId) {
+		this.warehouseId = warehouseId;
+	}
+	public String getWarehouseName() {
+		return warehouseName;
+	}
+	public void setWarehouseName(String warehouseName) {
+		this.warehouseName = warehouseName;
+	}
+	public LocalDate getFromDate() {
+		return fromDate;
+	}
+	public void setFromDate(LocalDate fromDate) {
+		this.fromDate = fromDate;
+	}
+	public LocalDate getToDate() {
+		return toDate;
+	}
+	public void setToDate(LocalDate toDate) {
+		this.toDate = toDate;
+	}
+	public Integer getOpeningQuantity() {
+		return openingQuantity;
+	}
+	public void setOpeningQuantity(Integer openingQuantity) {
+		this.openingQuantity = openingQuantity;
+	}
+	public Integer getPeriodQuantity() {
+		return periodQuantity;
+	}
+	public void setPeriodQuantity(Integer periodQuantity) {
+		this.periodQuantity = periodQuantity;
+	}
+	public Integer getClosingQuantity() {
+		return closingQuantity;
+	}
+	public void setClosingQuantity(Integer closingQuantity) {
+		this.closingQuantity = closingQuantity;
 	}
 }
 	 */
-	
 }

@@ -1,5 +1,7 @@
 package com.example.serviceimple;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import org.modelmapper.ModelMapper;
@@ -11,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import com.example.dto.request.OpeningStockRequestDTO;
 import com.example.dto.response.OpeningStockResponseDTO;
+import com.example.dto.response.StockReportResponseDTO;
 import com.example.entity.OpeningStock;
 import com.example.entity.Product;
 import com.example.entity.Warehouse;
@@ -48,8 +51,9 @@ public class OpeningStockServiceImple implements OpeningStockService {
 //		if (requestDTO.getOpeningDate() == null || requestDTO.getOpeningDate().isAfter(LocalDate.now())) {
 //			throw new RuntimeException("Opening date cannot be in the future");
 //		}
-		if (openingStockRepository.existsByProductProductIdAndWarehouseWarehouseId(requestDTO.getProductId(), requestDTO.getWarehouseId())) {
-			throw new RuntimeException("Opening stock already exists for this product in this warehouse");
+		if (openingStockRepository.existsByProductProductIdAndWarehouseWarehouseIdAndOpeningDate(
+		        requestDTO.getProductId(), requestDTO.getWarehouseId(), requestDTO.getOpeningDate())) {
+		    throw new RuntimeException("Opening stock already exists for this product/warehouse on this date");
 		}
 
 		OpeningStock openingStock = new OpeningStock();
@@ -77,11 +81,10 @@ public class OpeningStockServiceImple implements OpeningStockService {
 		Warehouse warehouse = warehouseRepository.findById(requestDTO.getWarehouseId())
 				.orElseThrow(() -> new RuntimeException("Warehouse Not found with id:" + requestDTO.getWarehouseId()));
 
-		if (openingStockRepository.existsByProductProductIdAndWarehouseWarehouseIdAndOpeningStockIdNot(
-				requestDTO.getProductId(), requestDTO.getWarehouseId(), openingStockId)) {
-			throw new RuntimeException("Opening stock already exists for this product in this warehouse");
+		if (openingStockRepository.existsByProductProductIdAndWarehouseWarehouseIdAndOpeningDateAndOpeningStockIdNot(
+		        requestDTO.getProductId(), requestDTO.getWarehouseId(), requestDTO.getOpeningDate(), openingStockId)) {
+		    throw new RuntimeException("Opening stock already exists for this product/warehouse on this date");
 		}
-
 		openingStock.setProduct(product);
 		openingStock.setWarehouse(warehouse);
 		openingStock.setQuantity(requestDTO.getQuantity());
@@ -120,7 +123,145 @@ public class OpeningStockServiceImple implements OpeningStockService {
 		dto.setWarehouseName(openingStock.getWarehouse().getWarehouseName());
 		return dto;
 	}
-}
+
+	@Override
+	public OpeningStockResponseDTO getClosingStock(Long productId, Long warehouseId, LocalDate fromDate, LocalDate toDate) {
+
+	    if (fromDate == null || toDate == null) {
+	        throw new RuntimeException("fromDate and toDate are required");
+	    }
+	    if (fromDate.isAfter(toDate)) {
+	        throw new RuntimeException("fromDate cannot be after toDate");
+	    }
+
+	    List<OpeningStock> candidates = openingStockRepository
+	            .findClosingStockCandidates(productId, warehouseId, toDate);
+
+	    if (candidates.isEmpty()) {
+	        throw new RuntimeException(
+	                "No opening stock record found on or before " + toDate + " for this product and warehouse");
+	    }
+
+	    OpeningStock latestRecord = candidates.get(0);
+
+	    return toResponseDTO(latestRecord);
+	}
+//	@Override
+//	public StockReportResponseDTO getStockReport(Long productId, Long warehouseId, LocalDate fromDate, LocalDate toDate) {
+//
+//	    if (fromDate == null || toDate == null) {
+//	        throw new RuntimeException("fromDate and toDate are required");
+//	    }
+//	    if (fromDate.isAfter(toDate)) {
+//	        throw new RuntimeException("fromDate cannot be after toDate");
+//	    }
+//
+//	    return openingStockRepository.getStockReport(productId, warehouseId, fromDate, toDate);
+//	}
+
+	
+
+	    @Override
+	    public OpeningStockResponseDTO getClosingStock(Long productId, Long warehouseId, LocalDate toDate) {
+
+	        Integer result = openingStockRepository.getClosingStock(productId, warehouseId, toDate);
+
+	        int closingStock;
+	        if (result != null) {
+	            closingStock = result;
+	        } else {
+	            closingStock = 0;
+	        }
+
+	        Product product = productRepository.findById(productId)
+	                .orElseThrow(() -> new RuntimeException("Product not found"));
+	        Warehouse warehouse = warehouseRepository.findById(warehouseId)
+	                .orElseThrow(() -> new RuntimeException("Warehouse not found"));
+
+	        OpeningStockResponseDTO response = new OpeningStockResponseDTO();
+	        response.setProductName(product.getProductName());
+	        response.setWarehouseName(warehouse.getWarehouseName());
+	        response.setQuantity(closingStock);
+	        response.setOpeningDate(toDate);
+
+	        return response;
+	    }
+
+	    
+
+	        @Override
+	        public StockReportResponseDTO getStockReport(Long productId, Long warehouseId,
+	                                                       LocalDate fromDate, LocalDate toDate) {
+
+	            Integer openingResult = openingStockRepository.getOpeningQuantity(productId, warehouseId, fromDate);
+	            int openingQuantity;
+	            if (openingResult != null) {
+	                openingQuantity = openingResult;
+	            } else {
+	                openingQuantity = 0;
+	            }
+
+	            Integer periodResult = openingStockRepository.getPeriodQuantity(productId, warehouseId, fromDate, toDate);
+	            int periodQuantity;
+	            if (periodResult != null) {
+	                periodQuantity = periodResult;
+	            } else {
+	                periodQuantity = 0;
+	            }
+
+	            int closingQuantity = openingQuantity + periodQuantity;
+
+	            Product product = productRepository.findById(productId)
+	                    .orElseThrow(() -> new RuntimeException("Product not found"));
+	            Warehouse warehouse = warehouseRepository.findById(warehouseId)
+	                    .orElseThrow(() -> new RuntimeException("Warehouse not found"));
+
+	            StockReportResponseDTO response = new StockReportResponseDTO();
+	            response.setProductId(productId);
+	            response.setProductName(product.getProductName());
+	            response.setWarehouseId(warehouseId);
+	            response.setWarehouseName(warehouse.getWarehouseName());
+	            response.setFromDate(fromDate);
+	            response.setToDate(toDate);
+	            response.setOpeningQuantity(openingQuantity);
+	            response.setPeriodQuantity(periodQuantity);
+	            response.setClosingQuantity(closingQuantity);
+
+	            return response;
+	        }
+	    }
+	
+
+//	    @Override
+//	    public OpeningStockResponseDTO getClosingStock(OpeningStockRequestDTO requestDTO) {
+//
+////	        Integer result = openingStockRepository.getClosingStock(
+////	                requestDTO.getProductId(),
+////	                requestDTO.getWarehouseId(),
+////	                requestDTO.getOpeningDate());
+//
+//	        int closingStock;
+//	        if (result != null) {
+//	            closingStock = result;
+//	        } else {
+//	            closingStock = 0;
+//	        }
+//
+//	        Product product = productRepository.findById(requestDTO.getProductId())
+//	                .orElseThrow(() -> new RuntimeException("Product not found"));
+//	        Warehouse warehouse = warehouseRepository.findById(requestDTO.getWarehouseId())
+//	                .orElseThrow(() -> new RuntimeException("Warehouse not found"));
+//
+//	        OpeningStockResponseDTO response = new OpeningStockResponseDTO();
+//	        response.setProductName(product.getProductName());
+//	        response.setWarehouseName(warehouse.getWarehouseName());
+//	        response.setQuantity(closingStock);
+//	        response.setOpeningDate(requestDTO.getOpeningDate());
+//
+//	        return response;
+//	    }
+	
+
 /*
  private void validateQuantity(Integer quantity) {
 		if (quantity == null || quantity < 0) {
