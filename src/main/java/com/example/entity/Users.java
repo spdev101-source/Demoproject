@@ -60,276 +60,163 @@ public class Users {
 		this.role = role;
 	}
 	/*
-	 @Override
-	public boolean register(RegisterRequestDTO requestDTO) {
-		if (usersRepository.existsByUsername(requestDTO.getUsername())) {
-			return false;
-		}
-		Role userRole = roleRepository.findByName("USER")
-                .orElseThrow(() ->
-                    new RuntimeException("USER role not found"));
-		Users user = new Users();
-		user.setUsername(requestDTO.getUsername());
-		user.setPassword(passwordEncoder.encode(requestDTO.getPassword()));
-		//user.setRole("USER");
-		user.setRole(userRole);
-		usersRepository.save(user);
-		return true;
-	}
-	@Entity
-@Table(name="roles")
-public class Role {
+	 @Query(value = "SELECT COALESCE(SUM(quantity), 0) " +
+               "FROM opening_stock " +
+               "WHERE product_id = :productId " +
+               "AND warehouse_id = :warehouseId " +
+               "AND opening_date < :fromDate",
+       nativeQuery = true)
+Integer getOpeningQuantity(@Param("productId") Long productId,
+                            @Param("warehouseId") Long warehouseId,
+                            @Param("fromDate") LocalDate fromDate);
+                            
+                            
+   CREATE OR REPLACE PROCEDURE get_opening_quantity(
+    IN p_product_id BIGINT,
+    IN p_warehouse_id BIGINT,
+    IN p_from_date DATE,
+    OUT p_opening_quantity INTEGER
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT COALESCE(SUM(quantity), 0)
+    INTO p_opening_quantity
+    FROM opening_stock
+    WHERE product_id = p_product_id
+      AND warehouse_id = p_warehouse_id
+      AND opening_date < p_from_date;
+END;
+$$;
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
-	private String name;
-	public interface RoleRepository extends JpaRepository<Role,Long>{
-	Optional<Role> findByName(String name);
-	
-	/---------------
-	 boolean changeRole(Long userId, Long roleId);
-	 @Override
-public boolean changeRole(Long userId, Long roleId) {
+CALL get_opening_quantity(1, 1, '2026-08-03', NULL);
 
-    Users user = usersRepository.findById(userId)
-            .orElseThrow(() ->
-                    new RuntimeException("User not found"));
+@Query(value = "CALL get_opening_quantity(:productId, :warehouseId, :fromDate, NULL)", nativeQuery = true)
+Integer getOpeningQuantity(@Param("productId") Long productId,
+                            @Param("warehouseId") Long warehouseId,
+                            @Param("fromDate") LocalDate fromDate);
+                            
+   @Query(value = "SELECT COALESCE(SUM(quantity), 0) " +
+               "FROM opening_stock " +
+               "WHERE product_id = :productId " +
+               "AND warehouse_id = :warehouseId " +
+               "AND opening_date BETWEEN :fromDate AND :toDate",
+       nativeQuery = true)
+Integer getPeriodQuantity(@Param("productId") Long productId,
+                           @Param("warehouseId") Long warehouseId,
+                           @Param("fromDate") LocalDate fromDate,
+                           @Param("toDate") LocalDate toDate);
+                           
+       CREATE OR REPLACE PROCEDURE get_period_quantity(
+    IN p_product_id BIGINT,
+    IN p_warehouse_id BIGINT,
+    IN p_from_date DATE,
+    IN p_to_date DATE,
+    OUT p_period_quantity INTEGER
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT COALESCE(SUM(quantity), 0)
+    INTO p_period_quantity
+    FROM opening_stock
+    WHERE product_id = p_product_id
+      AND warehouse_id = p_warehouse_id
+      AND opening_date BETWEEN p_from_date AND p_to_date;
+END;
+$$;
 
-    Role role = roleRepository.findById(roleId)
-            .orElseThrow(() ->
-                    new RuntimeException("Role not found"));
+CALL get_period_quantity(1, 1, '2026-08-03', '2026-08-10', NULL);
 
-    user.setRole(role);
+@Query(value = "CALL get_period_quantity(:productId, :warehouseId, :fromDate, :toDate, NULL)", nativeQuery = true)
+Integer getPeriodQuantity(@Param("productId") Long productId,
+                           @Param("warehouseId") Long warehouseId,
+                           @Param("fromDate") LocalDate fromDate,
+                           @Param("toDate") LocalDate toDate);
+                           
+                           
+     CREATE OR REPLACE PROCEDURE get_opening_and_period_quantity(
+    IN p_product_id BIGINT,
+    IN p_warehouse_id BIGINT,
+    IN p_from_date DATE,
+    IN p_to_date DATE,
+    OUT p_opening_quantity INTEGER,
+    OUT p_period_quantity INTEGER
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT
+        COALESCE(SUM(CASE WHEN opening_date < p_from_date THEN quantity ELSE 0 END), 0),
+        COALESCE(SUM(CASE WHEN opening_date BETWEEN p_from_date AND p_to_date THEN quantity ELSE 0 END), 0)
+    INTO
+        p_opening_quantity,
+        p_period_quantity
+    FROM opening_stock
+    WHERE product_id = p_product_id
+      AND warehouse_id = p_warehouse_id
+      AND opening_date <= p_to_date;
+END;
+$$;
+CALL get_opening_and_period_quantity(1, 1, '2026-08-03', '2026-08-10', NULL, NULL);
 
-    usersRepository.save(user);
-
-    return true;
+public interface OpeningPeriodProjection {
+    Integer getOpeningQuantity();
+    Integer getPeriodQuantity();
 }
-@PutMapping("/admin/users/{userId}/role")
-public ResponseEntity<String> changeRole(
-        @PathVariable Long userId,
-        @RequestBody ChangeRoleRequestDTO requestDTO) {
+@Query(value = "SELECT " +
+               "COALESCE(SUM(CASE WHEN opening_date < :fromDate THEN quantity ELSE 0 END), 0) AS opening_quantity, " +
+               "COALESCE(SUM(CASE WHEN opening_date BETWEEN :fromDate AND :toDate THEN quantity ELSE 0 END), 0) AS period_quantity " +
+               "FROM opening_stock " +
+               "WHERE product_id = :productId " +
+               "AND warehouse_id = :warehouseId " +
+               "AND opening_date <= :toDate",
+       nativeQuery = true)
+OpeningPeriodProjection getOpeningAndPeriodQuantity(@Param("productId") Long productId,
+                                                      @Param("warehouseId") Long warehouseId,
+                                                      @Param("fromDate") LocalDate fromDate,
+                                                      @Param("toDate") LocalDate toDate);
+                                                      
+        @Override
+public StockReportResponseDTO getStockReport(Long productId, Long warehouseId,
+                                               LocalDate fromDate, LocalDate toDate) {
 
-    boolean updated = authService.changeRole(
-            userId,
-            requestDTO.getRoleId()
-    );
+    OpeningPeriodProjection result = openingStockRepository.getOpeningAndPeriodQuantity(
+            productId, warehouseId, fromDate, toDate);
 
-    if (updated) {
-        return ResponseEntity.ok("Role updated successfully");
+    int openingQuantity;
+    if (result.getOpeningQuantity() != null) {
+        openingQuantity = result.getOpeningQuantity();
+    } else {
+        openingQuantity = 0;
     }
 
-    return ResponseEntity.badRequest()
-            .body("Role update failed");
-}
-package com.example.dto;
-
-public class ChangeRoleRequestDTO {
-
-    private Long roleId;
-
-    public Long getRoleId() {
-        return roleId;
+    int periodQuantity;
+    if (result.getPeriodQuantity() != null) {
+        periodQuantity = result.getPeriodQuantity();
+    } else {
+        periodQuantity = 0;
     }
 
-    public void setRoleId(Long roleId) {
-        this.roleId = roleId;
-    }
-}
-PUT /api/admin/users/{userId}/role
- OpeningStockResponseDTO getClosingStock(Long productId, Long warehouseId, LocalDate toDate);
-    StockReportResponseDTO getStockReport(Long productId, Long warehouseId,
-            LocalDate fromDate, LocalDate toDate);
-             @Override
-	    public OpeningStockResponseDTO getClosingStock(Long productId, Long warehouseId, LocalDate toDate) {
+    int closingQuantity = openingQuantity + periodQuantity;
 
-	        Integer result = openingStockRepository.getClosingStock(productId, warehouseId, toDate);
+    Product product = productRepository.findById(productId)
+            .orElseThrow(() -> new RuntimeException("Product not found"));
+    Warehouse warehouse = warehouseRepository.findById(warehouseId)
+            .orElseThrow(() -> new RuntimeException("Warehouse not found"));
 
-	        int closingStock;
-	        if (result != null) {
-	            closingStock = result;
-	        } else {
-	            closingStock = 0;
-	        }
+    StockReportResponseDTO response = new StockReportResponseDTO();
+    response.setProductId(productId);
+    response.setProductName(product.getProductName());
+    response.setWarehouseId(warehouseId);
+    response.setWarehouseName(warehouse.getWarehouseName());
+    response.setFromDate(fromDate);
+    response.setToDate(toDate);
+    response.setOpeningQuantity(openingQuantity);
+    response.setPeriodQuantity(periodQuantity);
+    response.setClosingQuantity(closingQuantity);
 
-	        Product product = productRepository.findById(productId)
-	                .orElseThrow(() -> new RuntimeException("Product not found"));
-	        Warehouse warehouse = warehouseRepository.findById(warehouseId)
-	                .orElseThrow(() -> new RuntimeException("Warehouse not found"));
-
-	        OpeningStockResponseDTO response = new OpeningStockResponseDTO();
-	        response.setProductName(product.getProductName());
-	        response.setWarehouseName(warehouse.getWarehouseName());
-	        response.setQuantity(closingStock);
-	        response.setOpeningDate(toDate);
-
-	        return response;
-	    }
-
-	    
-
-	        @Override
-	        public StockReportResponseDTO getStockReport(Long productId, Long warehouseId,
-	                                                       LocalDate fromDate, LocalDate toDate) {
-
-	            Integer openingResult = openingStockRepository.getOpeningQuantity(productId, warehouseId, fromDate);
-	            int openingQuantity;
-	            if (openingResult != null) {
-	                openingQuantity = openingResult;
-	            } else {
-	                openingQuantity = 0;
-	            }
-
-	            Integer periodResult = openingStockRepository.getPeriodQuantity(productId, warehouseId, fromDate, toDate);
-	            int periodQuantity;
-	            if (periodResult != null) {
-	                periodQuantity = periodResult;
-	            } else {
-	                periodQuantity = 0;
-	            }
-
-	            int closingQuantity = openingQuantity + periodQuantity;
-
-	            Product product = productRepository.findById(productId)
-	                    .orElseThrow(() -> new RuntimeException("Product not found"));
-	            Warehouse warehouse = warehouseRepository.findById(warehouseId)
-	                    .orElseThrow(() -> new RuntimeException("Warehouse not found"));
-
-	            StockReportResponseDTO response = new StockReportResponseDTO();
-	            response.setProductId(productId);
-	            response.setProductName(product.getProductName());
-	            response.setWarehouseId(warehouseId);
-	            response.setWarehouseName(warehouse.getWarehouseName());
-	            response.setFromDate(fromDate);
-	            response.setToDate(toDate);
-	            response.setOpeningQuantity(openingQuantity);
-	            response.setPeriodQuantity(periodQuantity);
-	            response.setClosingQuantity(closingQuantity);
-
-	            return response;
-	        }
-	    }
-	
-@Query("SELECT SUM(o.quantity) " +
-	           "FROM OpeningStock o " +
-	           "WHERE o.product.productId = :productId " +
-	           "AND o.warehouse.warehouseId = :warehouseId " +
-	           "AND o.openingDate <= :toDate")
-	    Integer getClosingStock(@Param("productId") Long productId,
-	                             @Param("warehouseId") Long warehouseId,
-	                             @Param("toDate") LocalDate toDate);
-	@Query("SELECT SUM(o.quantity) " +
-	           "FROM OpeningStock o " +
-	           "WHERE o.product.productId = :productId " +
-	           "AND o.warehouse.warehouseId = :warehouseId " +
-	           "AND o.openingDate < :fromDate")
-	    Integer getOpeningQuantity(@Param("productId") Long productId,
-	                                @Param("warehouseId") Long warehouseId,
-	                                @Param("fromDate") LocalDate fromDate);
-
-	    // Period quantity: everything DURING the period (inclusive both ends)
-	    @Query("SELECT SUM(o.quantity) " +
-	           "FROM OpeningStock o " +
-	           "WHERE o.product.productId = :productId " +
-	           "AND o.warehouse.warehouseId = :warehouseId " +
-	           "AND o.openingDate BETWEEN :fromDate AND :toDate")
-	    Integer getPeriodQuantity(@Param("productId") Long productId,
-	                               @Param("warehouseId") Long warehouseId,
-	                               @Param("fromDate") LocalDate fromDate,
-	                               @Param("toDate") LocalDate toDate);
-}
-@GetMapping("/closingstock")
-    public ResponseEntity<OpeningStockResponseDTO> getClosingStock(
-            @RequestParam Long productId,
-            @RequestParam Long warehouseId,
-            @RequestParam LocalDate toDate) {
-
-        OpeningStockResponseDTO response = openingStockService.getClosingStock(productId, warehouseId, toDate);
-        return ResponseEntity.ok(response);
-    }
-	@GetMapping("/stock-report")
-    public ResponseEntity<StockReportResponseDTO> getStockReport(
-            @RequestParam Long productId,
-            @RequestParam Long warehouseId,
-            @RequestParam LocalDate fromDate,
-            @RequestParam LocalDate toDate) {
-
-        StockReportResponseDTO response = openingStockService.getStockReport(productId, warehouseId, fromDate, toDate);
-        return ResponseEntity.ok(response);
-    }
-    package com.example.dto.response;
-
-
-
-import java.time.LocalDate;
-
-public class StockReportResponseDTO {
-
-	private Long productId;
-	private String productName;
-	private Long warehouseId;
-	private String warehouseName;
-	private LocalDate fromDate;
-	private LocalDate toDate;
-	private Integer openingQuantity;
-	private Integer periodQuantity;
-	private Integer closingQuantity;
-
-	public Long getProductId() {
-		return productId;
-	}
-	public void setProductId(Long productId) {
-		this.productId = productId;
-	}
-	public String getProductName() {
-		return productName;
-	}
-	public void setProductName(String productName) {
-		this.productName = productName;
-	}
-	public Long getWarehouseId() {
-		return warehouseId;
-	}
-	public void setWarehouseId(Long warehouseId) {
-		this.warehouseId = warehouseId;
-	}
-	public String getWarehouseName() {
-		return warehouseName;
-	}
-	public void setWarehouseName(String warehouseName) {
-		this.warehouseName = warehouseName;
-	}
-	public LocalDate getFromDate() {
-		return fromDate;
-	}
-	public void setFromDate(LocalDate fromDate) {
-		this.fromDate = fromDate;
-	}
-	public LocalDate getToDate() {
-		return toDate;
-	}
-	public void setToDate(LocalDate toDate) {
-		this.toDate = toDate;
-	}
-	public Integer getOpeningQuantity() {
-		return openingQuantity;
-	}
-	public void setOpeningQuantity(Integer openingQuantity) {
-		this.openingQuantity = openingQuantity;
-	}
-	public Integer getPeriodQuantity() {
-		return periodQuantity;
-	}
-	public void setPeriodQuantity(Integer periodQuantity) {
-		this.periodQuantity = periodQuantity;
-	}
-	public Integer getClosingQuantity() {
-		return closingQuantity;
-	}
-	public void setClosingQuantity(Integer closingQuantity) {
-		this.closingQuantity = closingQuantity;
-	}
+    return response;
 }
 	 */
 }
